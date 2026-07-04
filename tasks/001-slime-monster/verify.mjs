@@ -36,13 +36,14 @@ const waitFor = async (fn, timeoutMs, label) => {
   return false;
 };
 
-// 相機置中換算：玩家夠遠離邊界時位於畫面中心 (400,300)，zoom 1.1
+// 世界座標 → 螢幕座標：即時讀取相機實際中心（相機 lerp 移動中也正確）
 const clickWorld = async (wx, wy) => {
-  const s = await state();
-  const camX = Math.min(Math.max(s.player.x, 363), 789);
-  const camY = Math.min(Math.max(s.player.y, 272), 383);
+  const cam = await page.evaluate(() => {
+    const c = window.__game.scene.getScene('Village').cameras.main;
+    return { cx: c.worldView.centerX, cy: c.worldView.centerY, zoom: c.zoom };
+  });
   const box = await page.locator('#game-container canvas').boundingBox();
-  await page.mouse.click(box.x + 400 + (wx - camX) * 1.1, box.y + 300 + (wy - camY) * 1.1);
+  await page.mouse.click(box.x + 400 + (wx - cam.cx) * cam.zoom, box.y + 300 + (wy - cam.cy) * cam.zoom);
 };
 
 await page.goto(`http://localhost:${PORT}/`);
