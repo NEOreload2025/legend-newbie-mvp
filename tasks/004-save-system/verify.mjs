@@ -30,10 +30,17 @@ const clickWorld = async (wx, wy) => {
   await page.mouse.click(box.x + 400 + (wx - cam.cx) * cam.zoom, box.y + 300 + (wy - cam.cy) * cam.zoom);
 };
 
+const waitGame = async () => {
+  await page.waitForFunction(() => !!window.__game, null, { timeout: 15000 });
+  await page.waitForTimeout(800);
+};
+
 await page.goto(`http://localhost:${PORT}/`);
+await waitGame();
 await page.evaluate(() => localStorage.clear());
 await page.reload();
-await page.waitForTimeout(1500);
+await waitGame();
+await page.waitForTimeout(700);
 
 // 無存檔時：不應有 Continue 提示
 const hasContinueBefore = await page.evaluate(() => {
@@ -81,7 +88,7 @@ if (saved) {
 
 // §3：reload → Continue 顯示 → 按 C 恢復
 await page.reload();
-await page.waitForTimeout(1500);
+await waitGame();
 const hasContinue = await page.evaluate(() => {
   const cs = window.__game.scene.getScene('ClassSelect');
   return cs.children.list.some((c) => c.text !== undefined && /Continue|繼續/.test(String(c.text)));
@@ -103,7 +110,7 @@ check('§3 HUD 立即反映存檔金幣', hudGold !== null && hudGold.includes(S
 // 繼續玩會持續存檔：再打一下假人場... 簡化：直接等 stats 事件後檢查 localStorage 仍有效
 // §3：選新職業 → 清檔開新局
 await page.reload();
-await page.waitForTimeout(1500);
+await waitGame();
 await page.keyboard.press('1'); // 戰士新局
 await page.waitForTimeout(1000);
 s = await state();
