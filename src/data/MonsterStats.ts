@@ -11,3 +11,12 @@ export const SLIME_CONST = {
   respawnMs: 5000,
   hitFlashMs: 100,
 } as const;
+
+/** 史萊姆遊蕩行為常數（TASK-003） */
+export const SLIME_WANDER = {
+  intervalMinMs: 2000, // 下次遊走間隔下限
+  intervalMaxMs: 4000, // 上限（均勻隨機）
+  durationMs: 1000, // 每次遊走行走時間
+  speedFactor: 0.5, // 遊走速度 = moveSpeed × 此係數
+  radius: 80, // 遊蕩半徑：與出生點距離上限
+} as const;

@@ -72,3 +72,14 @@ src/
 - 史萊姆 onKilled callback 內同時處理 XP（條件）與 `spawnLoot`（無條件），位置取死亡時 `slime.x/y`（閉包於執行時已初始化）。
 - HUD 金幣文字置於 XP bar 下方 y=90，與既有 bar 座標不重疊；使用與 XP/HP 相同事件驅動 refresh。
 - 所有常數置於新增 `src/data/LootStats.ts`，Boot 貼圖生成集中 `makeLoot()`；未碰 `src/systems/`、未改 tasks/、零 any、build 通過。
+
+## TASK-003 遊蕩怪物與刷怪區的規格未明處決策
+
+- 遊蕩邏輯完全實作於 `Slime` 內（update 內以時間戳 `nextWanderTime`/`wanderEndTime` + 單位方向向量控制），未動 `src/systems/` 且與 chase/attack 優先序在同一 update 分支處理。
+- 方向選擇採「隨機嘗試 12 次 → 預測 stepDist 後是否超出 radius → fallback 朝 birth 方向」；使用 `setVelocity(unit * speedFactor)` 而非 moveTo（便於定時中斷與碰撞相容）。
+- 進入 aggro/attack 範圍時立即清 `wanderEndTime` 並重設 `nextWanderTime = now + random interval`，符合「進入追擊立即中斷遊走」；離開後需等完整間隔才再遊走。
+- 首次遊走與重生後皆延後一個隨機 interval 才開始（nextWanderTime 初始/重設為 0 時由 update 觸發延後），避免出生即移動。
+- 死亡時清遊蕩狀態（die 內），重生時重設（respawn 內），讓重生後的史萊姆恢復閒置遊蕩行為。
+- squash idleTween 於遊走期間持續運作（僅視覺）；遊走不影響深度、碰撞、onKilled 回呼、掉寶等既有行為。
+- 追加 SLIME_TILES 後總數 6 隻，新 3 隻出生點使用既有 `tileToWorld + TILE_H/2 + 6` 公式，spawn 與 radius 檢查皆以 birth 座標為準。
+- 所有數值嚴格置 `src/data/MonsterStats.ts` 的 SLIME_WANDER；無 hardcode、無 any、零改 tasks/ 與 systems/。
