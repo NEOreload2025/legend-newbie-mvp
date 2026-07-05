@@ -1,4 +1,4 @@
-import type { ClassId } from '../data/ClassStats';
+import type { ClassId, StatRange } from '../data/ClassStats';
 
 export const SAVE_KEY = 'legend-newbie-save-v1';
 
@@ -8,8 +8,8 @@ export interface SaveData {
   xp: number;
   maxHp: number;
   hp: number;
-  atk: number;
-  def: number;
+  atk: StatRange;
+  def: StatRange;
   gold: number;
 }
 
@@ -47,18 +47,24 @@ export function loadGame(): SaveData | null {
         typeof d.xp === 'number' &&
         typeof d.maxHp === 'number' &&
         typeof d.hp === 'number' &&
-        typeof d.atk === 'number' &&
-        typeof d.def === 'number' &&
         typeof d.gold === 'number';
-      if (validClass && allNum) {
+      const atk = d.atk as unknown;
+      const def = d.def as unknown;
+      const atkValid = atk && typeof atk === 'object' &&
+        typeof (atk as Record<string, unknown>).min === 'number' &&
+        typeof (atk as Record<string, unknown>).max === 'number';
+      const defValid = def && typeof def === 'object' &&
+        typeof (def as Record<string, unknown>).min === 'number' &&
+        typeof (def as Record<string, unknown>).max === 'number';
+      if (validClass && allNum && atkValid && defValid) {
         return {
           classId: d.classId as ClassId,
           level: d.level as number,
           xp: d.xp as number,
           maxHp: d.maxHp as number,
           hp: d.hp as number,
-          atk: d.atk as number,
-          def: d.def as number,
+          atk: atk as StatRange,
+          def: def as StatRange,
           gold: d.gold as number,
         };
       }

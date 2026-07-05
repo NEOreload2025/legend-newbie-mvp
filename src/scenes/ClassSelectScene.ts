@@ -127,8 +127,8 @@ export class ClassSelectScene extends Phaser.Scene {
 
     const lines = [
       `HP   ${stats.hp}`,
-      `ATK  ${stats.atk}`,
-      `DEF  ${stats.def}`,
+      `ATK  ${stats.atk.min}-${stats.atk.max}`,
+      `DEF  ${stats.def.min}-${stats.def.max}`,
       `攻速 ${stats.attackCooldownMs}ms/次`,
     ];
     this.add

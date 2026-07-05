@@ -65,8 +65,8 @@ export class VillageScene extends Phaser.Scene {
         xp: saveData.xp,
         maxHp: saveData.maxHp,
         hp: saveData.hp,
-        atk: saveData.atk,
-        def: saveData.def,
+        atk: { ...saveData.atk },
+        def: { ...saveData.def },
       };
       this.player.gold = saveData.gold;
       this.player.emit(PLAYER_EVENT_STATS_CHANGED, this.player.stats);

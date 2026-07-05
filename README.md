@@ -106,3 +106,21 @@ src/
 - 刪除 Slime.ts 後，所有既有史萊姆行為（遊蕩/追擊/攻擊/紅閃/死亡/重生/掉寶/XP）透過 Monster + MONSTER_DEFS 完全保留，未退化。
 - 未修改 tasks/、src/systems/ 任何檔案；root 執行 tsc + build 零錯誤；未加 runtime dep、未啟動 dev server。
 
+## TASK-006 三擲骰戰鬥公式改制的規格未明處決策
+
+- 將 Attackable 介面由 receiveAttack(atk: number) 改為 applyDamage(damage: number)，並新增 combatStats: CombatantStats 與 displayHeight: number；所有攻擊路徑（Player/Pet 對目標、Monster 對玩家）改為先 resolveAttack(attacker, defender) 取得 outcome，hit 才 applyDamage 並顯示紅傷害/閃，miss 則顯示灰色 MISS（不紅閃、不扣血）。此確保 RNG 恰好依序呼叫 3 次（驗證 stub 相依）。
+
+- StatRange 定義於 src/data/ClassStats.ts（CombatSystem 型別 re-export）；CombatantStats、AttackOutcome、rollRange、resolveAttack 集中 CombatSystem.ts 並移除舊 computeDamage。
+
+- 升級成長：atk.min+1 與 atk.max+1、def.max+1（def.min 不變）；accuracy/agility 終生固定來自職業/怪物定義。
+
+- SaveData 與 load 驗證改為 atk/def 必須是有效 {min, max} 物件，舊 number 格式一律回 null（使舊存檔失效）。
+
+- showMissText（灰 #aaaaaa、14px、仿傷害 tween）新增於 utils/DamageText.ts；MISS 定位使用 target.displayHeight * 0.6 與傷害一致。
+
+- Player/Monster（及 TrainingDummy）皆暴露 combatStats getter（即時反映當前 LevelState 成長）；Pet 也提供 combatStats。
+
+- MonsterDef 與 ClassStats 同步更新 atk/def 為 StatRange + 新 accuracy/agility；DUMMY_CONST/PET_CONST 移除單值防禦/攻擊，combatStats 內填入 SPEC 指定值。
+
+- Monster 攻擊玩家的 doAttack、玩家/寵物鎖定攻擊全部走 resolveAttack；僅編輯 SPEC 允許的 systems 三檔 + data/entities/scenes/utils 必要配合；root npx tsc + npm run build 零錯誤，無 any、無新依賴。
+

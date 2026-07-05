@@ -1,6 +1,9 @@
 /** 職業識別 */
 export type ClassId = 'warrior' | 'mage' | 'taoist';
 
+/** 戰鬥屬性區間（三擲骰公式用） */
+export interface StatRange { min: number; max: number }
+
 /** 職業數值定義（§3） */
 export interface ClassStats {
   id: ClassId;
@@ -9,8 +12,10 @@ export interface ClassStats {
   /** 英文名 */
   nameEn: string;
   hp: number;
-  atk: number;
-  def: number;
+  atk: StatRange;
+  def: StatRange;
+  accuracy: number;
+  agility: number;
   /** 攻擊冷卻（ms/次） */
   attackCooldownMs: number;
   /** 主色 */
@@ -25,8 +30,10 @@ export const CLASS_STATS: Record<ClassId, ClassStats> = {
     nameZh: '戰士',
     nameEn: 'Warrior',
     hp: 120,
-    atk: 10,
-    def: 12,
+    atk: { min: 8, max: 12 },
+    def: { min: 2, max: 5 },
+    accuracy: 13,
+    agility: 12,
     attackCooldownMs: 1000,
     color: 0xcc3333,
     traitZh: '高防高血，近戰肉盾',
@@ -36,8 +43,10 @@ export const CLASS_STATS: Record<ClassId, ClassStats> = {
     nameZh: '法師',
     nameEn: 'Mage',
     hp: 70,
-    atk: 18,
-    def: 4,
+    atk: { min: 14, max: 22 },
+    def: { min: 0, max: 1 },
+    accuracy: 10,
+    agility: 10,
     attackCooldownMs: 1200,
     color: 0x3366cc,
     traitZh: '高傷低防，火球攻擊',
@@ -47,8 +56,10 @@ export const CLASS_STATS: Record<ClassId, ClassStats> = {
     nameZh: '道士',
     nameEn: 'Taoist',
     hp: 90,
-    atk: 11,
-    def: 7,
+    atk: { min: 9, max: 13 },
+    def: { min: 1, max: 3 },
+    accuracy: 12,
+    agility: 15,
     attackCooldownMs: 1000,
     color: 0x33aa88,
     traitZh: '召喚跟寵協同作戰',
@@ -76,7 +87,6 @@ export const GAME_CONST = {
 /** 訓練假人常數（§6） */
 export const DUMMY_CONST = {
   hp: 30,
-  def: 2,
   /** 死亡後重生時間 ms */
   respawnMs: 3000,
   /** 受擊紅閃時間 ms */
@@ -87,7 +97,7 @@ export const DUMMY_CONST = {
 
 /** 跟寵常數（§7） */
 export const PET_CONST = {
-  atk: 3,
+  atk: { min: 2, max: 4 },
   /** 自動攻擊間隔 ms */
   attackIntervalMs: 2000,
   /** 自動攻擊範圍 px */

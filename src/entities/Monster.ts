@@ -8,9 +8,9 @@ import {
   type MonsterDef,
   type MonsterId,
 } from '../data/MonsterStats';
-import { showDamageText } from '../utils/DamageText';
+import { showDamageText, showMissText } from '../utils/DamageText';
 import { playDeathShards } from '../utils/VisualEffects';
-import { computeDamage } from '../systems/CombatSystem';
+import { resolveAttack, type CombatantStats } from '../systems/CombatSystem';
 import type { Attackable, KillSource, DamageStyle } from './Attackable';
 import type { Player } from './Player';
 
@@ -21,8 +21,9 @@ import type { Player } from './Player';
 export class Monster extends Phaser.Physics.Arcade.Sprite implements Attackable {
   readonly monsterId: MonsterId;
   hp: number;
-  readonly def: number; // 防禦值，Attackable 相容
   alive = true;
+
+  readonly combatStats: CombatantStats;
 
   private readonly monsterDef: MonsterDef;
   private readonly targetPlayer: Player;
@@ -58,7 +59,12 @@ export class Monster extends Phaser.Physics.Arcade.Sprite implements Attackable 
     this.monsterDef = def;
     this.monsterId = def.id;
     this.hp = def.hp;
-    this.def = def.def;
+    this.combatStats = {
+      atk: def.atk,
+      def: def.def,
+      accuracy: def.accuracy,
+      agility: def.agility,
+    };
     this.targetPlayer = targetPlayer;
     this.onKilled = onKilled;
     this.birthX = x;
@@ -163,7 +169,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite implements Attackable 
       // passive：永不主動
     }
 
-    if (isAttackingRange && def.atk > 0) {
+    if (isAttackingRange && def.atk.max > 0) {
       body.setVelocity(0, 0);
       // 進入攻擊範圍立即中斷遊走
       this.wanderEndTime = 0;
@@ -205,15 +211,19 @@ export class Monster extends Phaser.Physics.Arcade.Sprite implements Attackable 
 
   private doAttack(): void {
     const def = this.monsterDef;
-    if (def.atk <= 0) return;
-    const dmg = computeDamage(def.atk, this.targetPlayer.stats.def);
-    this.targetPlayer.takeDamage(dmg);
-    showDamageText(this.scene, this.targetPlayer.x, this.targetPlayer.y - this.targetPlayer.displayHeight * 0.6, dmg, 'normal');
+    if (def.atk.max <= 0) return;
+    const outcome = resolveAttack(this.combatStats, this.targetPlayer.combatStats);
+    if (outcome.result === 'hit') {
+      this.targetPlayer.takeDamage(outcome.damage);
+      showDamageText(this.scene, this.targetPlayer.x, this.targetPlayer.y - this.targetPlayer.displayHeight * 0.6, outcome.damage, 'normal');
+    } else {
+      // MISS 灰字：不傷害、不紅閃
+      showMissText(this.scene, this.targetPlayer.x, this.targetPlayer.y - this.targetPlayer.displayHeight * 0.6);
+    }
   }
 
-  receiveAttack(atk: number, source: KillSource, damageStyle: DamageStyle): number {
+  applyDamage(damage: number, source: KillSource, damageStyle: DamageStyle): number {
     if (!this.alive) return 0;
-    const damage = computeDamage(atk, this.def);
     this.hp -= damage;
 
     showDamageText(this.scene, this.x, this.y - this.displayHeight * 0.6, damage, damageStyle);
