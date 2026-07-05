@@ -92,14 +92,17 @@ check('§2 升級成長：atk +1/+1、def.max +1、HP+10 回滿',
   JSON.stringify(unit.grow));
 
 // ---------- 第二部分：實戰整合驗證 ----------
-await page.keyboard.press('3'); // 道士（agi 15，最容易觀察 MISS）
+// 假人取樣用戰士：無寵物干擾，傷害可完全歸因於玩家
+const patchCanvas = () =>
+  page.evaluate(() => {
+    const tm = window.__game.textures;
+    const orig = tm.addCanvas.bind(tm);
+    let uid = 0;
+    tm.addCanvas = (key, canvas, skipCache) => orig(`${key}-vfy${++uid}`, canvas, skipCache);
+  });
+await page.keyboard.press('1');
 await page.waitForTimeout(800);
-await page.evaluate(() => {
-  const tm = window.__game.textures;
-  const orig = tm.addCanvas.bind(tm);
-  let uid = 0;
-  tm.addCanvas = (key, canvas, skipCache) => orig(`${key}-vfy${++uid}`, canvas, skipCache);
-});
+await patchCanvas();
 
 const state = () =>
   page.evaluate(() => {
@@ -122,10 +125,11 @@ const clickWorld = async (wx, wy) => {
 };
 
 let s = await state();
-check('§4 player.combatStats 即時暴露（道士 9-13/1-3/12/15）',
-  !!s.player.combat && s.player.combat.atk.min === 9 && s.player.combat.agility === 15, JSON.stringify(s.player.combat));
+check('§4 player.combatStats 即時暴露（戰士 8-12/2-5/13/12）',
+  !!s.player.combat && s.player.combat.atk.min === 8 && s.player.combat.atk.max === 12 && s.player.combat.accuracy === 13 && s.player.combat.agility === 12,
+  JSON.stringify(s.player.combat));
 
-// 打假人 5 刀：每刀傷害 ∈ [6..12]（9-13 − 1-3），且至少兩種不同值（變異性）
+// 打假人 5 刀：每刀傷害 ∈ [5..11]（8-12 − 1-3），且至少兩種不同值（變異性）
 await clickWorld(640, 496);
 await page.waitForTimeout(4500);
 const deltas = [];
@@ -135,15 +139,22 @@ for (let i = 0; i < 5; i++) {
   if (!d0.alive) { await page.waitForTimeout(3200); continue; } // 重生等待
   prevHp = d0.hp;
   await page.keyboard.press('Space');
-  await page.waitForTimeout(1100);
+  await page.waitForTimeout(1300); // 冷卻 1000ms + 餘裕
   const d1 = (await state()).dummies[0];
   if (d1.alive && d1.hp < prevHp) deltas.push(prevHp - d1.hp);
-  else if (!d1.alive) deltas.push(prevHp); // 擊殺：至少造成 prevHp 傷害，僅計變異用
+  else if (!d1.alive) await page.waitForTimeout(3200); // 擊殺不計 delta（無法得知溢出）
 }
-check('§3 假人傷害皆在 [6..12] 且永不 MISS（agi 0）', deltas.length >= 3 && deltas.every((x) => x >= 6 && x <= 12), JSON.stringify(deltas));
+check('§3 假人傷害皆在 [5..11] 且永不 MISS（agi 0）', deltas.length >= 3 && deltas.every((x) => x >= 5 && x <= 11), JSON.stringify(deltas));
 check('§1 傷害有變異（≥2 種值）', new Set(deltas).size >= 2, JSON.stringify(deltas));
 
-// 站在史萊姆旁 24 秒：道士 agi15 vs 史萊姆 acc10 → 31% MISS；受傷 ∈ [1..5]
+// MISS 與受傷觀察改用道士（agi 15 vs 史萊姆 acc 10 → 31% MISS；受傷 ∈ [1..5]）
+await page.evaluate(() => localStorage.clear()); // 避免 Continue 干擾
+await page.reload();
+await page.waitForFunction(() => !!window.__game, null, { timeout: 15000 });
+await page.waitForTimeout(800);
+await page.keyboard.press('3');
+await page.waitForTimeout(800);
+await patchCanvas();
 s = await state();
 const sl = s.monsters.filter((mo) => mo.id === 'slime' && mo.alive)
   .reduce((a, b) => Math.hypot(a.x - s.player.x, a.y - s.player.y) < Math.hypot(b.x - s.player.x, b.y - s.player.y) ? a : b);
