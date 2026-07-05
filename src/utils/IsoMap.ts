@@ -76,4 +76,7 @@ export const SLIME_TILES: readonly { col: number; row: number }[] = [
   { col: 3, row: 9 },
   { col: 6, row: 10 },
   { col: 3, row: 13 },
+  { col: 15, row: 2 },
+  { col: 17, row: 3 },
+  { col: 15, row: 5 },
 ];
