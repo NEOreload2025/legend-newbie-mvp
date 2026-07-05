@@ -3,9 +3,10 @@ import { CLASS_STATS, GAME_CONST } from '../data/ClassStats';
 import type { ClassId, ClassStats } from '../data/ClassStats';
 import { gainXp } from '../systems/LevelSystem';
 import type { LevelState } from '../systems/LevelSystem';
-import { findNearestTarget } from '../systems/CombatSystem';
+import { findNearestTarget, resolveAttack, type CombatantStats } from '../systems/CombatSystem';
 import { playAttackBounce, playAttackEffect, playLevelUpEffect } from '../utils/VisualEffects';
 import { tileToWorld, PLAYER_SPAWN_TILE, TILE_H } from '../utils/IsoMap';
+import { showMissText } from '../utils/DamageText';
 import type { Attackable } from './Attackable';
 
 /** 玩家事件：HUD 訂閱以即時更新 */
@@ -19,6 +20,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** 金幣數量（TASK-002 掉寶拾取） */
   gold: number = 0;
+
+  get combatStats(): CombatantStats {
+    return {
+      atk: this.stats.atk,
+      def: this.stats.def,
+      accuracy: this.classStats.accuracy,
+      agility: this.classStats.agility,
+    };
+  }
 
   private lastAttackAt = -Infinity;
   /** click-to-move 目標點；null = 無 */
@@ -41,8 +51,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       xp: 0,
       maxHp: this.classStats.hp,
       hp: this.classStats.hp,
-      atk: this.classStats.atk,
-      def: this.classStats.def,
+      atk: { ...this.classStats.atk },
+      def: { ...this.classStats.def },
     };
 
     scene.add.existing(this);
@@ -123,14 +133,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.attackQueued = false;
     if (time - this.lastAttackAt < this.classStats.attackCooldownMs) return;
 
-    // 鎖定半徑 56px 內最近的存活目標（假人 + 史萊姆）
+    // 鎖定半徑 56px 內最近的存活目標（假人 + 怪物）
     const target = findNearestTarget(this, targets, GAME_CONST.attackRange, (d) => d.alive);
     if (!target) return;
 
     this.lastAttackAt = time;
     playAttackBounce(this.scene, this);
     playAttackEffect(this.scene, this.classId, this.x, this.y - 14, target.x, target.y);
-    target.receiveAttack(this.stats.atk, 'player', this.classId === 'mage' ? 'mage' : 'normal');
+
+    const outcome = resolveAttack(this.combatStats, target.combatStats);
+    if (outcome.result === 'hit') {
+      target.applyDamage(outcome.damage, 'player', this.classId === 'mage' ? 'mage' : 'normal');
+    } else {
+      // MISS 灰字：不觸發紅閃、不扣血
+      showMissText(this.scene, target.x, target.y - target.displayHeight * 0.6);
+    }
   }
 
   /** 親自擊殺 → 發放經驗值（依目標 def），可連升（§8、TASK-005） */

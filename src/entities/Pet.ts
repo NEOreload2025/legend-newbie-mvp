@@ -1,12 +1,20 @@
 import Phaser from 'phaser';
 import { PET_CONST } from '../data/ClassStats';
-import { findNearestTarget } from '../systems/CombatSystem';
+import { findNearestTarget, resolveAttack, type CombatantStats } from '../systems/CombatSystem';
 import { playAttackBounce, playAttackEffect } from '../utils/VisualEffects';
+import { showMissText } from '../utils/DamageText';
 import type { Attackable } from './Attackable';
 
-/** 道士跟寵（§7）：跟隨主人左後方、每 2 秒自動攻擊 60px 內目標（假人 + 史萊姆） */
+/** 道士跟寵（§7）：跟隨主人左後方、每 2 秒自動攻擊 60px 內目標（假人 + 怪物） */
 export class Pet extends Phaser.GameObjects.Sprite {
-  readonly atk: number = PET_CONST.atk;
+  get combatStats(): CombatantStats {
+    return {
+      atk: PET_CONST.atk,
+      def: { min: 0, max: 0 },
+      accuracy: 10,
+      agility: 10,
+    };
+  }
 
   private owner: Phaser.GameObjects.Sprite;
   private targets: readonly Attackable[];
@@ -60,8 +68,13 @@ export class Pet extends Phaser.GameObjects.Sprite {
     if (!target) return;
 
     playAttackBounce(this.scene, this);
-    // 寵物攻擊沿用道士系綠色符彈特效與共用傷害公式
+    // 寵物攻擊沿用道士系綠色符彈特效，改用 resolveAttack 三擲骰
     playAttackEffect(this.scene, 'taoist', this.x, this.y - 8, target.x, target.y);
-    target.receiveAttack(this.atk, 'pet', 'normal');
+    const outcome = resolveAttack(this.combatStats, target.combatStats);
+    if (outcome.result === 'hit') {
+      target.applyDamage(outcome.damage, 'pet', 'normal');
+    } else {
+      showMissText(this.scene, target.x, target.y - target.displayHeight * 0.6);
+    }
   }
 }

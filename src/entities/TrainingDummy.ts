@@ -3,14 +3,20 @@ import { DUMMY_CONST } from '../data/ClassStats';
 import { showDamageText } from '../utils/DamageText';
 import type { DamageStyle, KillSource } from './Attackable';
 import { playDeathShards } from '../utils/VisualEffects';
-import { computeDamage } from '../systems/CombatSystem';
 import type { Attackable } from './Attackable';
+import type { CombatantStats } from '../systems/CombatSystem';
 
-/** 訓練假人（§6）：HP 30、DEF 2、死亡 3 秒後原地重生 */
+/** 訓練假人（§6）：HP 30、def 1-3、agility 0（永遠命中）、死亡 3 秒後原地重生 */
 export class TrainingDummy extends Phaser.GameObjects.Sprite implements Attackable {
   hp: number = DUMMY_CONST.hp;
-  readonly def: number = DUMMY_CONST.def;
   alive = true;
+
+  readonly combatStats: CombatantStats = {
+    atk: { min: 0, max: 0 },
+    def: { min: 1, max: 3 },
+    accuracy: 0,
+    agility: 0,
+  };
 
   /** 擊殺回呼：觸發經驗值發放（來源區分玩家/寵物） */
   private onKilled: (source: KillSource) => void;
@@ -27,10 +33,9 @@ export class TrainingDummy extends Phaser.GameObjects.Sprite implements Attackab
     scene.add.existing(this);
   }
 
-  /** 承受一次攻擊；回傳實際造成的傷害 */
-  receiveAttack(atk: number, source: KillSource, damageStyle: DamageStyle): number {
+  /** 承受一次命中傷害；回傳實際造成的傷害 */
+  applyDamage(damage: number, source: KillSource, damageStyle: DamageStyle): number {
     if (!this.alive) return 0;
-    const damage = computeDamage(atk, this.def);
     this.hp -= damage;
 
     showDamageText(this.scene, this.x, this.y - this.displayHeight * 0.6, damage, damageStyle);

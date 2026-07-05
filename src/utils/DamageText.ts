@@ -64,3 +64,31 @@ export function showPickupText(
     onComplete: () => text.destroy(),
   });
 }
+
+/** MISS 浮動文字（灰色，仿傷害數字樣式，無紅閃）；未命中或被防禦格擋時顯示 */
+export function showMissText(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+): void {
+  const text = scene.add
+    .text(x, y - 28, 'MISS', {
+      fontFamily: 'monospace',
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#aaaaaa',
+      stroke: '#333333',
+      strokeThickness: 3,
+    })
+    .setOrigin(0.5, 1)
+    .setDepth(5000);
+
+  scene.tweens.add({
+    targets: text,
+    y: y - 52,
+    alpha: 0,
+    duration: 600,
+    ease: 'Cubic.easeOut',
+    onComplete: () => text.destroy(),
+  });
+}
